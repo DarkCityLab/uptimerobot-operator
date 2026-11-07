@@ -42,8 +42,8 @@ jobs:
       - name: Prepare uptimerobot-operator
         run: |
           go mod tidy
-          make docker-build IMG=uptimerobot-operator:v0.1.1
-          kind load docker-image uptimerobot-operator:v0.1.1
+          make docker-build IMG=uptimerobot-operator:v0.1.2
+          kind load docker-image uptimerobot-operator:v0.1.2
 
       - name: Install Helm
         run: make install-helm
@@ -73,7 +73,7 @@ jobs:
 
       - name: Deploy manager via Helm
         run: |
-          make helm-deploy IMG=uptimerobot-operator:v0.1.1
+          make helm-deploy IMG=uptimerobot-operator:v0.1.2
 
       - name: Check Helm release status
         run: |

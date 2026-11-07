@@ -1,0 +1,50 @@
+{{- if and (.Values.tests | default dict).enable .Values.metrics.enable }}
+# Helm test: connectivity smoke test — the controller-manager metrics endpoint
+# accepts a TCP connection (it's TLS + auth protected, so we check reachability,
+# not a 200). Run with `helm test <release> -n <namespace>`.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "uptimerobot-operator.resourceName" (dict "suffix" "test-connection" "context" $) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "uptimerobot-operator.name" . }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: connection-test
+      image: {{ (.Values.tests | default dict).connectionImage | default "curlimages/curl:8.11.1" }}
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          url="https://{{ include "uptimerobot-operator.resourceName" (dict "suffix" "controller-manager-metrics-service" "context" $) }}.{{ .Release.Namespace }}.svc:{{ .Values.metrics.port }}/metrics"
+          echo "Checking ${url} ..."
+          # A full TLS request (so the server logs no handshake error). The
+          # endpoint requires auth, so 401/403 is the expected "serving" answer;
+          # any HTTP response proves TLS + the metrics server are up.
+          code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "${url}")
+          echo "metrics endpoint responded: HTTP ${code}"
+          case "${code}" in
+            2*|401|403) echo "OK: controller-manager metrics endpoint is serving" ;;
+            *) echo "unexpected status ${code}"; exit 1 ;;
+          esac
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+{{- end }}

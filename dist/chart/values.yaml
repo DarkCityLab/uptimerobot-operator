@@ -144,3 +144,17 @@ certManager:
 prometheus:
   enable: false
 
+
+## Helm test suite (run with `helm test <release> -n <namespace>`).
+## Adds hook pods that verify the operator is installed and serving:
+## connectivity to the metrics endpoint, the CRD is Established, the controller
+## Deployment is Available, and the CRD's validation accepts a valid Monitor
+## while rejecting an invalid one.
+##
+tests:
+  enable: true
+  # Image for the operator/CRD checks (needs a shell + kubectl). Override if you
+  # mirror images or pin a different version.
+  kubectlImage: alpine/kubectl:1.34.1
+  # Image for the metrics connectivity check (needs curl + a shell).
+  connectionImage: curlimages/curl:8.11.1

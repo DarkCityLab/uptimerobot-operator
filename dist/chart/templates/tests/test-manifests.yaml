@@ -1,0 +1,35 @@
+{{- if (.Values.tests | default dict).enable }}
+# Monitor manifests the operator Helm test server-dry-runs to exercise the CRD's
+# validation: `valid` must be accepted, `invalid` (KEYWORD without a keyword
+# block) must be rejected by the CEL rules.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "uptimerobot-operator.resourceName" (dict "suffix" "test-manifests" "context" $) }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+data:
+  valid.yaml: |
+    apiVersion: monitoring.homelab.io/v1alpha1
+    kind: Monitor
+    metadata:
+      name: helm-test-valid
+    spec:
+      type: HTTP
+      url: https://example.com
+      interval: 300
+      timeout: 30
+  invalid.yaml: |
+    apiVersion: monitoring.homelab.io/v1alpha1
+    kind: Monitor
+    metadata:
+      name: helm-test-invalid
+    spec:
+      type: KEYWORD
+      url: https://example.com
+      interval: 300
+      timeout: 30
+{{- end }}
