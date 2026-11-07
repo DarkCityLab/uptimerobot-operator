@@ -2,19 +2,13 @@ apiVersion: v2
 name: uptimerobot-operator
 description: A Helm chart to distribute uptimerobot-operator
 type: application
-
-version: 0.1.2 # x-release-please-version
-# appVersion is informational; the image tag follows .Chart.version (see manager template).
-appVersion: "0.1.2"
-
+version: 0.1.3
+appVersion: 0.1.2
 keywords:
   - kubernetes
   - operator
-
 sources:
   - https://github.com/DarkCityLab/uptimerobot-operator
-
 annotations:
   kubebuilder.io/generated-by: kubebuilder
-  # Links the OCI chart package to the source repository on GHCR.
   org.opencontainers.image.source: https://github.com/DarkCityLab/uptimerobot-operator
