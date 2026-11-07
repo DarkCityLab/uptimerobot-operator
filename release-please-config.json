@@ -8,8 +8,7 @@
       "package-name": "uptimerobot-operator",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        { "type": "yaml", "path": "dist/chart/Chart.yaml", "jsonpath": "$.version" },
-        { "type": "yaml", "path": "dist/chart/Chart.yaml", "jsonpath": "$.appVersion" },
+        "dist/chart/Chart.yaml",
         "README.md"
       ]
     }
