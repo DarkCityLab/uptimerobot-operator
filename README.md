@@ -47,14 +47,23 @@ kubectl create secret generic uptimerobot-api-key \
   --from-literal=apiKey=YOUR_UPTIMEROBOT_TOKEN \
   -n uptimerobot-system
 
-# 2. Install the chart.
-helm install uptimerobot-operator ./dist/chart \
+# 2. (Recommended) Verify the chart's cosign signature before installing.
+VERSION=0.1.2 # x-release-please-version
+cosign verify "ghcr.io/darkcitylab/charts/uptimerobot-operator:${VERSION}" \
+  --certificate-identity "https://github.com/DarkCityLab/uptimerobot-operator/.github/workflows/release.yml@refs/tags/v${VERSION}" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+# 3. Install the chart from GHCR (OCI).
+helm install uptimerobot-operator \
+  oci://ghcr.io/darkcitylab/charts/uptimerobot-operator --version "${VERSION}" \
   -n uptimerobot-system
 ```
 
 The chart defaults to the `ghcr.io/darkcitylab/uptimerobot-operator` image at the
-chart's `appVersion`. Override with `--set manager.image.tag=<version>` (or
-`--set manager.image.repository=...`) to pin a different image.
+chart's `version` (so chart and image versions always match). Override with
+`--set manager.image.tag=<version>` (or `--set manager.image.repository=...`) to
+pin a different image. (To install from a local checkout instead of GHCR, use
+`helm install uptimerobot-operator ./dist/chart -n uptimerobot-system`.)
 
 Key values (see [`dist/chart/values.yaml`](dist/chart/values.yaml)):
 
@@ -66,7 +75,7 @@ Key values (see [`dist/chart/values.yaml`](dist/chart/values.yaml)):
 | `uptimerobot.rateLimitPerMinute` | `10` | client-side rate limit (Free plan) |
 | `uptimerobot.defaultAlertContacts` | `""` | default alert-contact IDs |
 | `manager.image.repository` | `ghcr.io/darkcitylab/uptimerobot-operator` | operator image |
-| `manager.image.tag` | `""` (→ chart appVersion) | image tag |
+| `manager.image.tag` | `""` (→ chart version) | image tag |
 
 To tune the operator, add flags to `manager.args`, e.g.
 `--requests-per-minute=10`, `--default-alert-contacts=8307662`,
