@@ -303,8 +303,21 @@ func (r *MonitorReconciler) reconcileDelete(ctx context.Context, mon *monitoring
 		}
 	}
 
-	controllerutil.RemoveFinalizer(mon, finalizerName)
-	if err := r.Update(ctx, mon); err != nil {
+	// Remove the finalizer, re-fetching on conflict. A quick create→delete (or a
+	// concurrent status write) can bump the object between our read and this
+	// update; without the retry that benign conflict surfaces as a Reconciler
+	// error + a redundant second DeleteMonitor on the requeue.
+	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var fresh monitoringv1alpha1.Monitor
+		if err := r.Get(ctx, client.ObjectKeyFromObject(mon), &fresh); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+		if !controllerutil.ContainsFinalizer(&fresh, finalizerName) {
+			return nil
+		}
+		controllerutil.RemoveFinalizer(&fresh, finalizerName)
+		return r.Update(ctx, &fresh)
+	}); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

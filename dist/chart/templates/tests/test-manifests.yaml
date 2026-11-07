@@ -32,4 +32,14 @@ data:
       url: https://example.com
       interval: 300
       timeout: 30
+  functional.yaml: |
+    apiVersion: monitoring.homelab.io/v1alpha1
+    kind: Monitor
+    metadata:
+      name: helm-functional-test
+    spec:
+      type: HTTP
+      url: https://example.com
+      interval: 300
+      timeout: 30
 {{- end }}
