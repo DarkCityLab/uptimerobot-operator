@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.3...v0.1.4) (2026-11-07)
+
+
+### Bug Fixes
+
+* delete-path finalizer conflict; add opt-in functional helm test (0.1.3) ([769af60](https://github.com/DarkCityLab/uptimerobot-operator/commit/769af601f71e666f08856439d5e06503ca2f9a96))
+
 ## [0.1.3](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.2...v0.1.3) (2026-11-07)
 
 
