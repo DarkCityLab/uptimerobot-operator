@@ -3,8 +3,8 @@ name: uptimerobot-operator
 description: A Helm chart to distribute uptimerobot-operator
 type: application
 
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.1.2 # x-release-please-version
+appVersion: "0.1.2" # x-release-please-version
 
 keywords:
   - kubernetes

@@ -1,0 +1,27 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Only one release-please run at a time on main.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    steps:
+      # Maintains a "release PR" that bumps the version in Chart.yaml and
+      # README, updates CHANGELOG.md, and — when merged — creates the vX.Y.Z
+      # tag + GitHub Release. The tag then triggers release.yml, which builds,
+      # signs, and publishes the image and Helm chart.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

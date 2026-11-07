@@ -129,15 +129,16 @@ Release artifacts are signed keylessly with [cosign](https://github.com/sigstore
 via GitHub OIDC (no long-lived keys). Verify the image and chart before use:
 
 ```sh
-IDENTITY='https://github.com/DarkCityLab/uptimerobot-operator/.github/workflows/release.yml@refs/tags/v0.1.0'
+VERSION=0.1.2 # x-release-please-version
+IDENTITY="https://github.com/DarkCityLab/uptimerobot-operator/.github/workflows/release.yml@refs/tags/v${VERSION}"
 ISSUER='https://token.actions.githubusercontent.com'
 
 # image
-cosign verify ghcr.io/darkcitylab/uptimerobot-operator:0.1.0 \
+cosign verify "ghcr.io/darkcitylab/uptimerobot-operator:${VERSION}" \
   --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER"
 
 # chart
-cosign verify ghcr.io/darkcitylab/charts/uptimerobot-operator:0.1.0 \
+cosign verify "ghcr.io/darkcitylab/charts/uptimerobot-operator:${VERSION}" \
   --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER"
 ```
 
@@ -156,6 +157,24 @@ Run locally against a cluster with the bundled token file:
 make install              # install CRDs
 go run ./cmd --api-key-file=./api-key --requests-per-minute=10
 ```
+
+## Releasing
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please-action):
+
+1. Land changes on `main` using [Conventional Commits](https://www.conventionalcommits.org)
+   (`feat:`, `fix:`, `build(deps):`, …). `feat:` → minor bump, `fix:`/others → patch,
+   `feat!:`/`BREAKING CHANGE:` → major.
+2. release-please keeps an open **"chore(main): release X.Y.Z"** PR that bumps the version
+   in `dist/chart/Chart.yaml` (`version` + `appVersion`) and `README.md`, and updates
+   `CHANGELOG.md`.
+3. **Merge that PR** → release-please creates the `vX.Y.Z` tag + GitHub Release.
+4. The tag triggers [`release.yml`](.github/workflows/release.yml), which builds, **signs**
+   (cosign), and publishes the multi-arch image and the Helm chart. The chart's image tag
+   follows `appVersion`, so image and chart versions always match.
+
+No manual version editing or tagging required. (Requires "Allow GitHub Actions to create
+and approve pull requests" enabled in repo/org Actions settings.)
 
 ## License
 
