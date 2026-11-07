@@ -1,0 +1,39 @@
+name: Dependency Review
+
+# Reviews dependency changes on a PR and fails if a newly introduced dependency
+# carries a high/critical advisory or a license incompatible with this project's
+# Apache-2.0 distribution. Complements Trivy (repo-wide license/vuln scan) and
+# Dependabot (automated updates) with a gate at PR time.
+#
+# Requires the repository Dependency Graph (on by default for public repos).
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write # post the review summary as a PR comment on failure
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Review dependency changes
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Fail the PR on a newly added dependency with a high/critical advisory.
+          fail-on-severity: high
+          # Block copyleft licenses that complicate redistribution of an Apache-2.0
+          # binary. Tune to taste; use allow-licenses instead for a strict allowlist.
+          deny-licenses: GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, LGPL-2.1-only, LGPL-2.1-or-later, LGPL-3.0-only, LGPL-3.0-or-later
+          # Comment the findings on the PR only when the check fails (less noise).
+          comment-summary-in-pr: on-failure
