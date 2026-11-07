@@ -16,6 +16,11 @@ env:
   # image package of the same name under the org namespace.
   CHART_REGISTRY: oci://ghcr.io/darkcitylab/charts
 
+# Serialize releases per tag but NEVER cancel an in-flight publish/sign.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   image:
     name: Build and push operator image
