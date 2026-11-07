@@ -3,6 +3,7 @@ name: release-please
 on:
   push:
     branches: [main]
+  workflow_dispatch: {} # allow manual regeneration of the release PR
 
 permissions:
   contents: write
