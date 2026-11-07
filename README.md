@@ -129,7 +129,7 @@ Release artifacts are signed keylessly with [cosign](https://github.com/sigstore
 via GitHub OIDC (no long-lived keys). Verify the image and chart before use:
 
 ```sh
-VERSION=0.1.2 # x-release-please-version
+VERSION=0.1.3 # x-release-please-version
 IDENTITY="https://github.com/DarkCityLab/uptimerobot-operator/.github/workflows/release.yml@refs/tags/v${VERSION}"
 ISSUER='https://token.actions.githubusercontent.com'
 
