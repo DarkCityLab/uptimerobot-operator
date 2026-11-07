@@ -1,0 +1,114 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write # keyless cosign signing via GitHub OIDC (Sigstore Fulcio/Rekor)
+
+env:
+  IMAGE: ghcr.io/darkcitylab/uptimerobot-operator
+  # Helm OCI chart repo. A distinct path ("charts/") avoids colliding with the
+  # image package of the same name under the org namespace.
+  CHART_REGISTRY: oci://ghcr.io/darkcitylab/charts
+
+jobs:
+  image:
+    name: Build and push operator image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: meta
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Build and push (multi-arch)
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Sign the image (keyless, by digest)
+        env:
+          COSIGN_YES: "true"
+        run: cosign sign "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+  chart:
+    name: Package and publish Helm chart
+    runs-on: ubuntu-latest
+    needs: image
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Derive version
+        id: meta
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: |
+          helm package dist/chart \
+            --version "${{ steps.meta.outputs.version }}" \
+            --app-version "${{ steps.meta.outputs.version }}" \
+            --destination dist/
+
+      - name: Log in to GHCR (Helm + cosign)
+        run: |
+          # Helm uses its own registry config; cosign reads ~/.docker/config.json.
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR (OCI, linked to this repository)
+        id: push
+        run: |
+          out=$(helm push dist/uptimerobot-operator-*.tgz "${{ env.CHART_REGISTRY }}" 2>&1)
+          echo "$out"
+          digest=$(echo "$out" | grep -oE 'sha256:[0-9a-f]{64}' | head -1)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Sign the chart (keyless, by digest)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          cosign sign \
+            "ghcr.io/darkcitylab/charts/uptimerobot-operator@${{ steps.push.outputs.digest }}"
+
+      - name: Attach chart to the GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: dist/*.tgz

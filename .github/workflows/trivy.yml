@@ -1,0 +1,126 @@
+name: Trivy Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "27 4 * * 1" # weekly, Monday ~04:27 (off the :00 mark)
+  workflow_dispatch: {} # allow admins to run on demand
+
+permissions:
+  contents: read
+  # Required to upload SARIF to GitHub code scanning. Code-scanning alerts are
+  # visible only to users with write/admin/security access — not read-only or
+  # public viewers — which satisfies the "admin only" requirement.
+  security-events: write
+
+# Cancel superseded runs of this workflow on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Scan the working tree: Go dependencies (vuln), Dockerfile + Helm/kustomize
+  # manifests (misconfig/IaC), hardcoded secrets, and dependency licenses.
+  repo:
+    name: Repo scan (deps, Dockerfile/IaC, secrets, licenses)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Trivy filesystem scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          format: sarif
+          output: trivy-fs.sarif
+          exit-code: "0" # report-only: never fail the job on findings
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: "true"
+
+      - name: Upload filesystem SARIF to code scanning
+        if: always()
+        continue-on-error: true # needs a public repo or GitHub Advanced Security
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3.39.3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Upload filesystem SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-fs-sarif
+          path: trivy-fs.sarif
+          if-no-files-found: warn
+
+      - name: Trivy filesystem scan (table, printed to the run log)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          format: table
+          exit-code: "0"
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: "true"
+
+  # Build the operator image and scan it for OS/package CVEs and secrets.
+  image:
+    name: Image scan (CVEs, secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Build operator image (single-arch, local)
+        run: make docker-build IMG=uptimerobot-operator:scan
+
+      - name: Trivy image scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: uptimerobot-operator:scan
+          scanners: vuln,secret
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          format: sarif
+          output: trivy-image.sarif
+          exit-code: "0"
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: "true"
+
+      - name: Upload image SARIF to code scanning
+        if: always()
+        continue-on-error: true # needs a public repo or GitHub Advanced Security
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3.39.3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+      - name: Upload image SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-image-sarif
+          path: trivy-image.sarif
+          if-no-files-found: warn
+
+      - name: Trivy image scan (table, printed to the run log)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: uptimerobot-operator:scan
+          scanners: vuln,secret
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          format: table
+          exit-code: "0"
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: "true"
