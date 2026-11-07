@@ -153,6 +153,10 @@ prometheus:
 ##
 tests:
   enable: true
+  # Opt-in END-TO-END test: creates a real Monitor, waits for Ready (the operator
+  # creates it in UptimeRobot), then deletes it. Makes real UptimeRobot API calls
+  # and needs a valid API key + egress, so it is OFF by default.
+  functional: true
   # Image for the operator/CRD checks (needs a shell + kubectl). Override if you
   # mirror images or pin a different version.
   kubectlImage: alpine/kubectl:1.34.1
