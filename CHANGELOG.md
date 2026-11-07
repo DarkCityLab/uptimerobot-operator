@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.3...v0.1.4) (2026-11-07)
+
+
+### Bug Fixes
+
+* bump Chart.yaml appVersion via release-please jsonpath ([4cad98b](https://github.com/DarkCityLab/uptimerobot-operator/commit/4cad98b1278fb44ccbad79334e2e8e75b25f62cb))
+* delete-path finalizer conflict; add opt-in functional helm test (0.1.3) ([769af60](https://github.com/DarkCityLab/uptimerobot-operator/commit/769af601f71e666f08856439d5e06503ca2f9a96))
+
 ## [0.1.3](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.2...v0.1.3) (2026-11-07)
 
 
