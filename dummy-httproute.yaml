@@ -1,0 +1,29 @@
+# Dummy HTTPRoute to exercise the operator's annotation flow.
+# The operator only reads metadata.annotations + spec.hostnames, so the
+# parentRef gateway does NOT need to exist for a Monitor to be created.
+#
+# Prerequisites (Gateway API is not installed by default on this cluster):
+#   kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+#   kubectl rollout restart deploy/uptimerobot-operator-controller-manager -n uptimerobot-system
+#
+# Then:
+#   kubectl apply -f dummy-httproute.yaml
+#   kubectl get monitors            # operator auto-creates one Monitor per hostname
+#   kubectl delete -f dummy-httproute.yaml   # cascades: Monitor + UptimeRobot monitor deleted
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dummy
+  namespace: default
+  annotations:
+    monitoring.homelab.io/enabled: "true"
+    # Optional overrides:
+    monitoring.homelab.io/path: "/health"
+    # monitoring.homelab.io/interval: "300"
+    # monitoring.homelab.io/scheme: "https"
+    monitoring.homelab.io/alert-contacts: "8307662"
+spec:
+  parentRefs:
+    - name: dummy-gateway        # need not exist; only hostnames are read
+  hostnames:
+    - dummy.example.com
