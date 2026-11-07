@@ -11,7 +11,7 @@ updates:
       time: "04:17"
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "build(deps)"
+      prefix: "fix(deps)"
     groups:
       # Collapse routine minor/patch bumps into a single PR to cut noise.
       go-minor-patch:
@@ -56,4 +56,4 @@ updates:
       time: "04:29"
     open-pull-requests-limit: 3
     commit-message:
-      prefix: "build(deps)"
+      prefix: "fix(deps)"
