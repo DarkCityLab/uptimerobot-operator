@@ -1,0 +1,50 @@
+apiVersion: monitoring.homelab.io/v1alpha1
+kind: Monitor
+metadata:
+  name: example-http
+  labels:
+    app.kubernetes.io/name: uptimerobot-operator
+spec:
+  type: HTTP
+  url: https://example.com/health
+  friendlyName: Example HTTP
+  interval: 300
+  timeout: 30
+  http:
+    method: GET
+    followRedirections: true
+    successHttpResponseCodes:
+      - "2xx"
+      - "3xx"
+  # Enable periodic polling of uptime/response-time stats into .status.
+  collectStats: true
+  statsRefreshInterval: 15m
+  # Per-CR alert contact override (otherwise the operator's global default applies).
+  # alertContacts:
+  #   - alertContactId: 8307662
+---
+apiVersion: monitoring.homelab.io/v1alpha1
+kind: Monitor
+metadata:
+  name: example-keyword
+spec:
+  type: KEYWORD
+  url: https://example.com
+  interval: 300
+  timeout: 30
+  keyword:
+    value: "Welcome"
+    alertWhen: ALERT_NOT_EXISTS
+    caseSensitive: false
+---
+apiVersion: monitoring.homelab.io/v1alpha1
+kind: Monitor
+metadata:
+  name: example-port
+spec:
+  type: PORT
+  url: db.example.com
+  interval: 300
+  timeout: 30
+  port: 5432
+  portAlertCondition: CLOSED
