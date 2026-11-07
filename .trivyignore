@@ -1,0 +1,30 @@
+# Trivy ignore file — intentional, reviewed exceptions only.
+# Each entry is a non-issue for this project or an accepted, documented risk.
+
+# AVD-KSV-0041 — "ClusterRole shouldn't have access to manage secrets".
+# The operator needs `get` on Secrets by design: a Monitor's
+# spec.http.passwordSecretRef lets a user point HTTP-auth monitors at a Secret
+# holding the password, read via resolveSecretKey (internal/controller/
+# monitor_mapping.go). Access is minimized to `get` only (no list/watch) and
+# Secrets are read uncached (direct API gets), the least privilege the feature
+# can run with. Accepted risk.
+AVD-KSV-0041
+
+# AVD-KSV-0125 — "Restrict container images to trusted registries".
+# The operator image is ghcr.io/darkcitylab/uptimerobot-operator — this project's
+# own, official registry. There is no untrusted-registry risk here; the check is
+# a policy allowlist we have no reason to configure for a single-registry project.
+AVD-KSV-0125
+
+# AVD-KSV-0013 — 'Image tag ":latest" used'.
+# Only the generated convenience bundle dist/install.yaml and the kustomize base
+# use :latest. The recommended install path — the Helm chart — pins the image to
+# the chart version (image and chart versions always match). Users applying
+# install.yaml should pin via `kubectl set image` or prefer the chart.
+AVD-KSV-0013
+
+# AVD-DS-0026 — "No HEALTHCHECK defined" (Dockerfile).
+# The runtime image is distroless (no shell/curl to run a HEALTHCHECK), and this
+# is a Kubernetes operator: health is handled by the manager's liveness/readiness
+# probes on :8081 (/healthz, /readyz), not a Docker HEALTHCHECK. Not applicable.
+AVD-DS-0026

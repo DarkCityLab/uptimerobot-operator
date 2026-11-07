@@ -1,0 +1,162 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write # keyless cosign signing via GitHub OIDC (Sigstore Fulcio/Rekor)
+
+env:
+  IMAGE: ghcr.io/darkcitylab/uptimerobot-operator
+  # Helm OCI chart repo. A distinct path ("charts/") avoids colliding with the
+  # image package of the same name under the org namespace.
+  CHART_REGISTRY: oci://ghcr.io/darkcitylab/charts
+
+# Serialize releases per tag but NEVER cancel an in-flight publish/sign.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Verify versions are in sync with the tag
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Assert Chart.yaml, README, and manifest match the tag
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          echo "Release tag version: $V"
+          fail=0
+          check() { if [ "$2" != "$V" ]; then echo "::error::$1 is '$2', expected '$V'"; fail=1; else echo "ok: $1 = $2"; fi; }
+          check "Chart.yaml version"      "$(grep -E '^version:'    dist/chart/Chart.yaml | awk '{print $2}')"
+          check "Chart.yaml appVersion"   "$(grep -E '^appVersion:' dist/chart/Chart.yaml | tr -d '"' | awk '{print $2}')"
+          check "release-please manifest" "$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' .release-please-manifest.json | head -1)"
+          while IFS= read -r v; do check "README VERSION= line" "$v"; done \
+            < <(grep -oE 'VERSION=[0-9]+\.[0-9]+\.[0-9]+' README.md | cut -d= -f2)
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Version drift — bump all files to $V (run: hack/release.sh $V) before tagging."
+            exit 1
+          fi
+
+  image:
+    name: Build and push operator image
+    needs: guard
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: meta
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Build and push (multi-arch)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # GHCR shows the package description from the index annotation on a
+          # multi-arch image (a Dockerfile LABEL only lands on the per-arch
+          # configs). "index:" targets the manifest list / OCI image index.
+          annotations: |
+            index:org.opencontainers.image.description=Kubernetes operator that creates and deletes UptimeRobot (v3) monitors for services exposed in your cluster
+            index:org.opencontainers.image.source=https://github.com/DarkCityLab/uptimerobot-operator
+            index:org.opencontainers.image.licenses=Apache-2.0
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Sign the image (keyless, by digest)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          ref="${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+          for i in 1 2 3 4 5; do
+            if cosign sign "$ref"; then exit 0; fi
+            echo "cosign sign attempt $i failed (transient Sigstore/Rekor error?); retrying in $((i*15))s"
+            sleep $((i*15))
+          done
+          echo "::error::cosign sign failed after 5 attempts"; exit 1
+
+  chart:
+    name: Package and publish Helm chart
+    runs-on: ubuntu-24.04
+    needs: image
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Derive version
+        id: meta
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: |
+          helm package dist/chart \
+            --version "${{ steps.meta.outputs.version }}" \
+            --app-version "${{ steps.meta.outputs.version }}" \
+            --destination dist/
+
+      - name: Log in to GHCR (Helm + cosign)
+        run: |
+          # Helm uses its own registry config; cosign reads ~/.docker/config.json.
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR (OCI, linked to this repository)
+        id: push
+        run: |
+          out=$(helm push dist/uptimerobot-operator-*.tgz "${{ env.CHART_REGISTRY }}" 2>&1)
+          echo "$out"
+          digest=$(echo "$out" | grep -oE 'sha256:[0-9a-f]{64}' | head -1)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Sign the chart (keyless, by digest)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          ref="ghcr.io/darkcitylab/charts/uptimerobot-operator@${{ steps.push.outputs.digest }}"
+          for i in 1 2 3 4 5; do
+            if cosign sign "$ref"; then exit 0; fi
+            echo "cosign sign attempt $i failed (transient Sigstore/Rekor error?); retrying in $((i*15))s"
+            sleep $((i*15))
+          done
+          echo "::error::cosign sign failed after 5 attempts"; exit 1
+
+      - name: Attach chart to the GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: dist/*.tgz

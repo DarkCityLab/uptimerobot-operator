@@ -1,0 +1,7 @@
+# Code owners — the required PR approval must come from one of these.
+# Enforced when branch protection on `main` has
+# "Require review from Code Owners" enabled.
+#
+# Owners must have write access to the repo. Add more handles (space-separated)
+# or a team (@DarkCityLab/<team>) to widen the allowed approver list.
+* @ogizhelev

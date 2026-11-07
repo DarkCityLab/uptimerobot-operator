@@ -1,0 +1,67 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: {{ include "uptimerobot-operator.resourceName" (dict "suffix" "manager-role" "context" $) }}
+rules:
+    - apiGroups:
+        - ""
+      resources:
+        - events
+      verbs:
+        - create
+        - patch
+    - apiGroups:
+        - ""
+      resources:
+        - secrets
+      verbs:
+        - get
+        {{- if (.Values.uptimerobot.secretWatch | default dict).enabled }}
+        # Added only when secretWatch is enabled: the controller watches
+        # credential Secrets for prompt rotation (widens secret access
+        # cluster-wide — see values.yaml uptimerobot.secretWatch).
+        - list
+        - watch
+        {{- end }}
+    - apiGroups:
+        - gateway.networking.k8s.io
+      resources:
+        - httproutes
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - monitoring.homelab.io
+      resources:
+        - monitors
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - monitoring.homelab.io
+      resources:
+        - monitors/finalizers
+      verbs:
+        - update
+    - apiGroups:
+        - monitoring.homelab.io
+      resources:
+        - monitors/status
+      verbs:
+        - get
+        - patch
+        - update
+    - apiGroups:
+        - networking.k8s.io
+      resources:
+        - ingresses
+      verbs:
+        - get
+        - list
+        - watch

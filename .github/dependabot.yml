@@ -1,0 +1,59 @@
+# Dependabot configuration.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
+version: 2
+updates:
+  # --- Go modules -----------------------------------------------------------
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:17"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      # Collapse routine minor/patch bumps into a single PR to cut noise.
+      go-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # These versions are deliberately aligned (Kubernetes 0.35 /
+      # controller-runtime 0.23 / gateway-api 1.4); a major/minor bump of any
+      # of them re-breaks the compatibility matrix. Allow patch + security only.
+      - dependency-name: "k8s.io/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "sigs.k8s.io/controller-runtime"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "sigs.k8s.io/gateway-api"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  # --- GitHub Actions -------------------------------------------------------
+  # Keeps the SHA-pinned actions current (updates both the SHA and the # vX
+  # comment), satisfying the org's "pin to commit SHA" policy.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:23"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # --- Docker base images ---------------------------------------------------
+  # Keeps the digest-pinned golang builder and distroless runtime up to date.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:29"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"

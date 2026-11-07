@@ -1,0 +1,1070 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+    control-plane: controller-manager
+  name: uptimerobot-operator-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: monitors.monitoring.homelab.io
+spec:
+  group: monitoring.homelab.io
+  names:
+    kind: Monitor
+    listKind: MonitorList
+    plural: monitors
+    shortNames:
+    - mon
+    singular: monitor
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.type
+      name: Type
+      type: string
+    - jsonPath: .status.observedURL
+      name: URL
+      type: string
+    - jsonPath: .status.monitorID
+      name: Monitor-ID
+      type: string
+    - jsonPath: .status.monitorStatus
+      name: Monitor-Status
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Monitor is the Schema for the monitors API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of Monitor
+            properties:
+              alertContacts:
+                description: |-
+                  alertContacts overrides the operator-wide default alert contacts for this
+                  monitor. When empty, the operator injects its configured global default.
+                items:
+                  description: |-
+                    AlertContactAssignment assigns an UptimeRobot alert contact to the monitor.
+                    Threshold and recurrence are only honoured on paid plans.
+                  properties:
+                    alertContactId:
+                      description: alertContactId is the numeric ID of a pre-existing
+                        UptimeRobot alert contact.
+                      format: int64
+                      type: integer
+                    recurrence:
+                      description: recurrence repeats notifications every N minutes
+                        (0 = no repeat).
+                      type: integer
+                    threshold:
+                      description: threshold is the delay in minutes after the monitor
+                        is down before notifying.
+                      type: integer
+                  required:
+                  - alertContactId
+                  type: object
+                type: array
+              collectStats:
+                description: |-
+                  collectStats enables periodic polling of uptime/response-time statistics
+                  into .status. Off by default to conserve the API rate limit.
+                type: boolean
+              config:
+                description: config holds type-specific nested configuration.
+                properties:
+                  apiAssertions:
+                    description: apiAssertions configures an API monitor.
+                    properties:
+                      checks:
+                        description: checks is the list of assertion checks (1-5).
+                        items:
+                          description: APIAssertionCheck is a single assertion for
+                            an API monitor.
+                          properties:
+                            comparison:
+                              description: comparison is the operator applied to the
+                                property.
+                              type: string
+                            property:
+                              description: property is the assertion source (JSONPath,
+                                headers., status_code, or body).
+                              type: string
+                            target:
+                              description: target is the expected value (JSON). Omit
+                                for existence/null/empty checks.
+                              x-kubernetes-preserve-unknown-fields: true
+                          required:
+                          - comparison
+                          - property
+                          type: object
+                        maxItems: 5
+                        minItems: 1
+                        type: array
+                      logic:
+                        description: logic combines multiple checks.
+                        enum:
+                        - AND
+                        - OR
+                        type: string
+                    required:
+                    - checks
+                    - logic
+                    type: object
+                  applicationErrorRetries:
+                    description: applicationErrorRetries is the number of retries
+                      on application errors (0-3).
+                    maximum: 3
+                    minimum: 0
+                    type: integer
+                  dnsRecords:
+                    description: dnsRecords configures a DNS monitor.
+                    properties:
+                      A:
+                        items:
+                          type: string
+                        type: array
+                      AAAA:
+                        items:
+                          type: string
+                        type: array
+                      CNAME:
+                        items:
+                          type: string
+                        type: array
+                      DNSKEY:
+                        items:
+                          type: string
+                        type: array
+                      DS:
+                        items:
+                          type: string
+                        type: array
+                      MX:
+                        items:
+                          type: string
+                        type: array
+                      NS:
+                        items:
+                          type: string
+                        type: array
+                      NSEC:
+                        items:
+                          type: string
+                        type: array
+                      NSEC3:
+                        items:
+                          type: string
+                        type: array
+                      PTR:
+                        items:
+                          type: string
+                        type: array
+                      SOA:
+                        items:
+                          type: string
+                        type: array
+                      SPF:
+                        items:
+                          type: string
+                        type: array
+                      SRV:
+                        items:
+                          type: string
+                        type: array
+                      TXT:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  ipVersion:
+                    description: ipVersion selects the IP version preference.
+                    enum:
+                    - ipv4Only
+                    - ipv6Only
+                    type: string
+                  sslExpirationPeriodDays:
+                    description: sslExpirationPeriodDays sets reminder windows in
+                      days (0-365, max 10).
+                    items:
+                      type: integer
+                    maxItems: 10
+                    type: array
+                  thirdPartyService:
+                    description: thirdPartyService configures a THIRD_PARTY_SERVICE
+                      monitor.
+                    properties:
+                      notify:
+                        description: notify tunes notifications.
+                        properties:
+                          incrementalUpdates:
+                            type: boolean
+                          severity:
+                            enum:
+                            - all
+                            - major
+                            - none
+                            type: string
+                        type: object
+                      providerId:
+                        description: providerId is the isdown provider ID to track.
+                        format: int64
+                        type: integer
+                      trackedComponentIds:
+                        description: trackedComponentIds scopes tracking to specific
+                          components.
+                        items:
+                          format: int64
+                          type: integer
+                        type: array
+                    required:
+                    - providerId
+                    type: object
+                  udp:
+                    description: udp configures a UDP monitor.
+                    properties:
+                      packetLossThreshold:
+                        description: packetLossThreshold is the packet-loss percentage
+                          that triggers an alert.
+                        type: integer
+                      payload:
+                        description: payload to send in the UDP packet.
+                        type: string
+                    required:
+                    - packetLossThreshold
+                    type: object
+                  visualComparison:
+                    description: visualComparison configures a VISUAL_COMPARISON monitor.
+                    properties:
+                      areaCoordinates:
+                        description: areaCoordinates optionally limits comparison
+                          to a sub-region.
+                        properties:
+                          percentHeight:
+                            type: integer
+                          percentWidth:
+                            type: integer
+                          percentX:
+                            type: integer
+                          percentY:
+                            type: integer
+                        required:
+                        - percentHeight
+                        - percentWidth
+                        - percentX
+                        - percentY
+                        type: object
+                      sensitivityThreshold:
+                        description: sensitivityThreshold is the difference threshold
+                          (0-100).
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                      viewport:
+                        description: viewport selects the capture viewport.
+                        enum:
+                        - desktop
+                        - mobile
+                        type: string
+                    required:
+                    - sensitivityThreshold
+                    - viewport
+                    type: object
+                type: object
+              customFields:
+                additionalProperties:
+                  type: string
+                description: customFields are key-value metadata (paid plans only;
+                  max 20 keys).
+                type: object
+              friendlyName:
+                description: |-
+                  friendlyName is the display name in UptimeRobot. Defaults to
+                  "<namespace>/<name>" when empty.
+                maxLength: 250
+                type: string
+              gracePeriod:
+                description: gracePeriod is the HEARTBEAT grace period in seconds
+                  before alerting.
+                type: integer
+              groupId:
+                description: groupId assigns the monitor to a monitor group (0 = none).
+                format: int64
+                type: integer
+              http:
+                description: http configures HTTP, KEYWORD and API monitors.
+                properties:
+                  authType:
+                    description: authType selects the HTTP authentication scheme.
+                    enum:
+                    - NONE
+                    - HTTP_BASIC
+                    - DIGEST
+                    - BEARER
+                    type: string
+                  checkSSLErrors:
+                    description: checkSSLErrors enables SSL/domain expiration error
+                      checks.
+                    type: boolean
+                  customHeaders:
+                    additionalProperties:
+                      type: string
+                    description: customHeaders are sent with the request (serialized
+                      JSON must be <3000 chars).
+                    type: object
+                  domainExpirationReminder:
+                    description: domainExpirationReminder enables domain-expiry notifications.
+                    type: boolean
+                  followRedirections:
+                    description: followRedirections toggles following HTTP redirects.
+                    type: boolean
+                  method:
+                    description: method is the HTTP method used for the check.
+                    enum:
+                    - HEAD
+                    - GET
+                    - POST
+                    - PUT
+                    - PATCH
+                    - DELETE
+                    - OPTIONS
+                    - QUERY
+                    type: string
+                  passwordSecretRef:
+                    description: |-
+                      passwordSecretRef references a Secret key holding the HTTP auth credential
+                      (so it never lives in the Monitor spec in plaintext): the password for
+                      HTTP_BASIC/DIGEST, or the token for BEARER.
+                    properties:
+                      key:
+                        description: key is the key within the Secret holding the
+                          value.
+                        type: string
+                      name:
+                        description: name is the name of the Secret.
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  postValueData:
+                    description: postValueData is the request payload (for non-HEAD
+                      methods).
+                    type: string
+                  postValueType:
+                    description: postValueType selects the payload encoding.
+                    enum:
+                    - KEY_VALUE
+                    - RAW_JSON
+                    type: string
+                  sslExpirationReminder:
+                    description: sslExpirationReminder enables SSL-expiry notifications.
+                    type: boolean
+                  successHttpResponseCodes:
+                    description: successHttpResponseCodes lists codes/ranges treated
+                      as up, e.g. ["2xx","3xx"].
+                    items:
+                      type: string
+                    type: array
+                  username:
+                    description: username for HTTP authentication.
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: passwordSecretRef is required when authType is HTTP_BASIC,
+                    DIGEST or BEARER (it holds the password for Basic/Digest, the
+                    token for Bearer)
+                  rule: '!(has(self.authType) && (self.authType == ''HTTP_BASIC''
+                    || self.authType == ''DIGEST'' || self.authType == ''BEARER''))
+                    || has(self.passwordSecretRef)'
+                - message: username is required when authType is HTTP_BASIC or DIGEST
+                  rule: '!(has(self.authType) && (self.authType == ''HTTP_BASIC''
+                    || self.authType == ''DIGEST'')) || (has(self.username) && size(self.username)
+                    > 0)'
+              interval:
+                default: 300
+                description: interval is the check interval in seconds (minimum 15).
+                minimum: 15
+                type: integer
+              keyword:
+                description: keyword configures KEYWORD monitors.
+                properties:
+                  alertWhen:
+                    description: alertWhen controls whether to alert when the keyword
+                      exists or is absent.
+                    enum:
+                    - ALERT_EXISTS
+                    - ALERT_NOT_EXISTS
+                    type: string
+                  caseSensitive:
+                    description: caseSensitive toggles case-sensitive matching.
+                    type: boolean
+                  value:
+                    description: value is the keyword to search for in the response
+                      body.
+                    type: string
+                required:
+                - alertWhen
+                - value
+                type: object
+              maintenanceWindowIds:
+                description: maintenanceWindowIds assigns maintenance windows by ID.
+                items:
+                  format: int64
+                  type: integer
+                type: array
+              paused:
+                description: paused, when true, pauses monitoring (maps to the Pause
+                  API); false resumes it.
+                type: boolean
+              port:
+                description: port is the port to check (required for PORT and UDP
+                  monitors).
+                type: integer
+              portAlertCondition:
+                description: portAlertCondition controls when a PORT monitor alerts.
+                enum:
+                - CLOSED
+                - OPEN
+                type: string
+              region:
+                description: region configures which region(s) the monitor runs from.
+                properties:
+                  manualSelected:
+                    description: manualSelected must be true to change the region
+                      on update.
+                    type: boolean
+                  regions:
+                    description: regions is the list of region codes (na, eu, as,
+                      oc). At least one when set.
+                    items:
+                      type: string
+                    minItems: 1
+                    type: array
+                  threshold:
+                    description: threshold sets per-region response-time thresholds
+                      (ms).
+                    properties:
+                      as:
+                        type: integer
+                      eu:
+                        type: integer
+                      na:
+                        type: integer
+                      oc:
+                        type: integer
+                    type: object
+                type: object
+              responseTimeThreshold:
+                description: responseTimeThreshold applies a response-time threshold
+                  (ms) to all regions.
+                type: integer
+              statsRefreshInterval:
+                description: |-
+                  statsRefreshInterval controls how often stats are polled when
+                  collectStats is enabled. Defaults to 15m.
+                type: string
+              tagNames:
+                description: tagNames assigns tags to the monitor.
+                items:
+                  type: string
+                type: array
+              timeout:
+                default: 30
+                description: |-
+                  timeout is the check timeout in seconds (0-60). Required by the API for
+                  all check types (ignored for HEARTBEAT / THIRD_PARTY_SERVICE).
+                maximum: 60
+                minimum: 0
+                type: integer
+              type:
+                default: HTTP
+                description: type is the UptimeRobot monitor type. Immutable after
+                  creation.
+                enum:
+                - HTTP
+                - KEYWORD
+                - PING
+                - PORT
+                - HEARTBEAT
+                - DNS
+                - API
+                - UDP
+                - VISUAL_COMPARISON
+                - THIRD_PARTY_SERVICE
+                type: string
+              url:
+                description: |-
+                  url is the target to monitor. Required for all types except HEARTBEAT and
+                  THIRD_PARTY_SERVICE.
+                maxLength: 10000
+                type: string
+            type: object
+            x-kubernetes-validations:
+            - message: type is immutable
+              rule: self.type == oldSelf.type
+            - message: url is required for this monitor type
+              rule: self.type in ['HEARTBEAT','THIRD_PARTY_SERVICE'] || (has(self.url)
+                && size(self.url) > 0)
+            - message: keyword settings are required for KEYWORD monitors
+              rule: self.type != 'KEYWORD' || has(self.keyword)
+            - message: port is required for PORT and UDP monitors
+              rule: '!(self.type in [''PORT'',''UDP'']) || has(self.port)'
+            - message: config.apiAssertions is required for API monitors
+              rule: self.type != 'API' || (has(self.config) && has(self.config.apiAssertions))
+            - message: config.dnsRecords is required for DNS monitors
+              rule: self.type != 'DNS' || (has(self.config) && has(self.config.dnsRecords))
+            - message: config.udp is required for UDP monitors
+              rule: self.type != 'UDP' || (has(self.config) && has(self.config.udp))
+            - message: config.visualComparison is required for VISUAL_COMPARISON monitors
+              rule: self.type != 'VISUAL_COMPARISON' || (has(self.config) && has(self.config.visualComparison))
+            - message: config.thirdPartyService is required for THIRD_PARTY_SERVICE
+                monitors
+              rule: self.type != 'THIRD_PARTY_SERVICE' || (has(self.config) && has(self.config.thirdPartyService))
+          status:
+            description: status defines the observed state of Monitor
+            properties:
+              conditions:
+                description: conditions represent the current state of the Monitor
+                  resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              createDateTime:
+                description: createDateTime is when the monitor was created in UptimeRobot.
+                type: string
+              currentStateDuration:
+                description: currentStateDuration is how long (seconds) the monitor
+                  has held its status.
+                format: int64
+                type: integer
+              domainExpireDate:
+                type: string
+              heartbeatUrl:
+                description: heartbeatURL is the push URL for HEARTBEAT monitors.
+                type: string
+              lastIncident:
+                description: lastIncident is the most recent incident summary.
+                properties:
+                  cause:
+                    type: integer
+                  duration:
+                    format: int64
+                    type: integer
+                  id:
+                    type: string
+                  reason:
+                    type: string
+                  startedAt:
+                    type: string
+                  status:
+                    type: string
+                type: object
+              lastResetStatsToken:
+                description: |-
+                  lastResetStatsToken records the last applied reset-stats annotation value
+                  so the one-shot reset action fires only when the annotation changes.
+                type: string
+              lastStatsSync:
+                description: lastStatsSync is when statistics were last polled.
+                format: date-time
+                type: string
+              monitorID:
+                description: monitorID is the UptimeRobot monitor ID once created.
+                type: string
+              monitorStatus:
+                description: monitorStatus is the live status reported by UptimeRobot
+                  (UP/DOWN/PAUSED...).
+                type: string
+              observedConfigHash:
+                description: |-
+                  observedConfigHash is a hash of the last config pushed to UptimeRobot,
+                  including resolved Secret values. A credential rotation changes this hash
+                  without bumping generation, which is what triggers a re-push.
+                type: string
+              observedGeneration:
+                description: observedGeneration is the last reconciled .metadata.generation.
+                format: int64
+                type: integer
+              observedURL:
+                description: observedURL is the URL the operator last reconciled.
+                type: string
+              responseTime:
+                description: responseTime holds polled response-time statistics (when
+                  collectStats is enabled).
+                properties:
+                  averageMs:
+                    type: integer
+                  maxMs:
+                    type: integer
+                  minMs:
+                    type: integer
+                type: object
+              sslBrand:
+                description: sslBrand / sslExpiryDateTime / domainExpireDate reflect
+                  SSL/domain metadata.
+                type: string
+              sslExpiryDateTime:
+                type: string
+              state:
+                description: 'state is the reconcile state: Pending, Active or Error.'
+                type: string
+              uptime:
+                description: uptime holds polled uptime statistics (when collectStats
+                  is enabled).
+                properties:
+                  downtimeSeconds:
+                    description: downtimeSeconds is total downtime over the window.
+                    format: int64
+                    type: integer
+                  from:
+                    description: from/to describe the polled window (ISO 8601).
+                    type: string
+                  incidentCount:
+                    description: incidentCount is the number of incidents in the window.
+                    type: integer
+                  ratio:
+                    description: ratio is the uptime percentage (0-100) over the polled
+                      window.
+                    type: string
+                  to:
+                    type: string
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-controller-manager
+  namespace: uptimerobot-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-leader-election-role
+  namespace: uptimerobot-operator-system
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: uptimerobot-operator-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: uptimerobot-operator-metrics-auth-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: uptimerobot-operator-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-monitor-admin-role
+rules:
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-monitor-editor-role
+rules:
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-monitor-viewer-role
+rules:
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - monitoring.homelab.io
+  resources:
+  - monitors/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-leader-election-rolebinding
+  namespace: uptimerobot-operator-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: uptimerobot-operator-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: uptimerobot-operator-controller-manager
+  namespace: uptimerobot-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+  name: uptimerobot-operator-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: uptimerobot-operator-manager-role
+subjects:
+- kind: ServiceAccount
+  name: uptimerobot-operator-controller-manager
+  namespace: uptimerobot-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: uptimerobot-operator-metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: uptimerobot-operator-metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: uptimerobot-operator-controller-manager
+  namespace: uptimerobot-operator-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+    control-plane: controller-manager
+  name: uptimerobot-operator-controller-manager-metrics-service
+  namespace: uptimerobot-operator-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: uptimerobot-operator
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: uptimerobot-operator
+    control-plane: controller-manager
+  name: uptimerobot-operator-controller-manager
+  namespace: uptimerobot-operator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uptimerobot-operator
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: uptimerobot-operator
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:8443
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --api-key-file=/etc/uptimerobot/apiKey
+        command:
+        - /manager
+        image: ghcr.io/darkcitylab/uptimerobot-operator:latest
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports: []
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 65532
+          runAsNonRoot: true
+          runAsUser: 65532
+        volumeMounts:
+        - mountPath: /etc/uptimerobot
+          name: uptimerobot-api-key
+          readOnly: true
+      securityContext:
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: uptimerobot-operator-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: uptimerobot-api-key
+        secret:
+          items:
+          - key: apiKey
+            path: apiKey
+          optional: true
+          secretName: uptimerobot-api-key

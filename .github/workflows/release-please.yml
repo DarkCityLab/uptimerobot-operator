@@ -1,0 +1,50 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # allow manual regeneration of the release PR
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Only one release-please run at a time on main.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    steps:
+      # Maintains a "release PR" that bumps the version in Chart.yaml and
+      # README, updates CHANGELOG.md, and — when merged — creates the vX.Y.Z
+      # tag + GitHub Release. The tag then triggers release.yml, which builds,
+      # signs, and publishes the image and Helm chart.
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # Full automation requires a real token (PAT or GitHub App), NOT the
+          # built-in GITHUB_TOKEN: GitHub refuses to trigger release.yml from a
+          # tag created with GITHUB_TOKEN (anti-recursion). With RELEASE_PLEASE_TOKEN
+          # set, the merged release PR tags vX.Y.Z and that tag fires release.yml,
+          # which builds, signs, and publishes — hands-off. If the secret is
+          # unset, this falls back to GITHUB_TOKEN: the release PR still works, but
+          # you must push the tag yourself (e.g. hack/release.sh) to publish.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # Enable auto-merge on the release PR so it merges itself once any required
+      # approval lands and checks pass. Requires "Allow auto-merge" in repo
+      # settings; harmless no-op otherwise.
+      - name: Enable auto-merge on the release PR
+        if: ${{ steps.release.outputs.pr }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash \
+            "${{ fromJson(steps.release.outputs.pr).number }}" \
+            -R "${{ github.repository }}"

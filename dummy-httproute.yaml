@@ -1,0 +1,59 @@
+# Dummy HTTPRoute exercising the operator's annotation flow WITH authentication.
+# Everything lives in its own namespace (operator-example) and the manifest is
+# self-contained: namespace + credential Secret + HTTPRoute.
+#
+# The monitored endpoint (https://dummy.example.com/health) requires HTTP Basic
+# auth; the operator reads the password from the Secret below and hands it to
+# UptimeRobot, which replays it on every check. The value never appears in the
+# HTTPRoute annotations in plaintext.
+#
+# Prerequisites (Gateway API is not installed by default on this cluster):
+#   kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+#   kubectl rollout restart deploy/uptimerobot-operator-controller-manager -n uptimerobot-system
+#
+# Then:
+#   kubectl apply -f dummy-httproute.yaml
+#   kubectl -n operator-example get monitors            # one Monitor per hostname
+#   kubectl -n operator-example get monitor dummy-4e3e0cbe -o yaml   # see resolved spec.http
+#   kubectl delete -f dummy-httproute.yaml              # cascades: Monitor + UptimeRobot monitor deleted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: operator-example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: endpoint-auth
+  namespace: operator-example
+  labels:
+    # Required ONLY when the operator runs with uptimerobot.secretWatch.enabled=true
+    # (prompt rotation watches labelled credential Secrets). Harmless otherwise.
+    monitoring.homelab.io/credential: "true"
+type: Opaque
+stringData:
+  # Password for HTTP_BASIC/DIGEST, or the token for BEARER. Referenced by the
+  # HTTPRoute annotations below (auth-secret + auth-secret-key).
+  password: "s3cr3t-health-password"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dummy
+  namespace: operator-example
+  annotations:
+    monitoring.homelab.io/enabled: "true"
+    monitoring.homelab.io/path: "/health"
+    monitoring.homelab.io/alert-contacts: "8307662"
+    # --- authenticated endpoint ---
+    monitoring.homelab.io/http-method: "GET"
+    monitoring.homelab.io/auth-type: "HTTP_BASIC"        # NONE | HTTP_BASIC | DIGEST | BEARER
+    monitoring.homelab.io/auth-username: "svc"           # required for HTTP_BASIC/DIGEST
+    monitoring.homelab.io/auth-secret: "endpoint-auth"   # Secret name (same namespace as this route)
+    monitoring.homelab.io/auth-secret-key: "password"    # key within the Secret (default "password")
+spec:
+  parentRefs:
+    - name: dummy-gateway        # need not exist; only hostnames are read
+  hostnames:
+    - dummy.example.com

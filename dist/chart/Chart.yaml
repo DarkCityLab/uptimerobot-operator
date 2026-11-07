@@ -1,0 +1,14 @@
+apiVersion: v2
+name: uptimerobot-operator
+description: A Helm chart to distribute uptimerobot-operator
+type: application
+version: 0.1.1 # x-release-please-version
+appVersion: "0.1.1"
+keywords:
+  - kubernetes
+  - operator
+sources:
+  - https://github.com/DarkCityLab/uptimerobot-operator
+annotations:
+  kubebuilder.io/generated-by: kubebuilder
+  org.opencontainers.image.source: https://github.com/DarkCityLab/uptimerobot-operator
