@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.4...v0.1.5) (2026-11-09)
+
+
+### Bug Fixes
+
+* **deps:** bump golang from 1.26 to 1.27 ([63122e8](https://github.com/DarkCityLab/uptimerobot-operator/commit/63122e86b6e54c7fe31107016ec919cecb6278e2))
+
 ## [0.1.4](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.3...v0.1.4) (2026-11-07)
 
 
