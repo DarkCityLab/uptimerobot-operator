@@ -2,7 +2,7 @@
 # Pin the builder to the native BUILD platform and cross-compile to the target
 # arch via GOARCH. This avoids running the Go toolchain under QEMU emulation
 # (which is 5-10x slower) when producing arm64 images on an amd64 host.
-FROM --platform=${BUILDPLATFORM} golang:1.26@sha256:cfa27959837144bf4649802ba38e59daffd0dd2a7994aa83daaf113285b0f551 AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.27@sha256:e519d3b0a5b285e5aa53ab9eef02bc6bbb9cb04608389b743a136a9ce75f0d1e AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
