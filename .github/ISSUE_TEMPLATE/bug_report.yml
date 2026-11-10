@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a problem with the UptimeRobot Operator
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug!
+
+        This project is **not** affiliated with UptimeRobot — please report
+        problems with the *operator* here, and problems with the UptimeRobot
+        service to UptimeRobot support.
+
+        **Do not report security vulnerabilities here.** Use the repository's
+        **Security → Report a vulnerability** page instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is a problem with the operator, not with the UptimeRobot service itself.
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected to happen instead.
+      placeholder: When I annotate an HTTPRoute with ..., the operator ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps. Include the Monitor CR / HTTPRoute / Ingress YAML if relevant (redact secrets).
+      placeholder: |
+        1. Apply this Monitor: ...
+        2. Observe `kubectl get monitors`
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Operator logs & resource status
+      description: |
+        Relevant manager logs and `kubectl describe monitor <name>` output.
+        Redact API tokens, credentials, and hostnames you don't want public.
+      render: shell
+  - type: input
+    id: operator-version
+    attributes:
+      label: Operator / chart version
+      placeholder: "0.1.5"
+    validations:
+      required: true
+  - type: input
+    id: k8s-version
+    attributes:
+      label: Kubernetes version
+      description: Output of `kubectl version`.
+      placeholder: "v1.30.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      options:
+        - Helm chart (GHCR)
+        - Helm chart (local checkout)
+        - Kustomize / install.yaml
+        - make run (local)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Gateway API vs Ingress, source object annotations, relevant flags, etc.

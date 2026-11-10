@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a new capability or improvement
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Remember this is a spare-time project — proposals
+        that map cleanly onto the UptimeRobot v3 API and the operator's
+        CR-as-source-of-truth design are the easiest to land.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and discussions and this is not a duplicate.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do, and why can't you do it today?
+      placeholder: I want to monitor ... but the operator currently ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        What should the operator do? If it's a new field, show the Monitor CR
+        spec or annotation you'd expect, and the UptimeRobot v3 API field it maps to.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you've tried or other approaches you weighed.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to open a PR for this.

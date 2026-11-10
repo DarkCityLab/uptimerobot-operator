@@ -1,0 +1,18 @@
+UptimeRobot Operator
+Copyright 2026 DarkCityLab
+
+This product is licensed under the Apache License, Version 2.0 (see the LICENSE
+file). It is an independent, open-source project maintained by a solo developer
+in their spare time.
+
+Trademark and affiliation notice
+--------------------------------
+This project is NOT affiliated with, endorsed by, sponsored by, or supported by
+UptimeRobot or its operators. It is an independent client that interacts with
+UptimeRobot's public v3 API on the user's behalf.
+
+"UptimeRobot" and any associated names and logos are trademarks of their
+respective owner. They are used in this project solely to identify and describe
+interoperability with the UptimeRobot service (nominative fair use), and their
+use does not imply any affiliation or endorsement. For the official service and
+its terms, see https://uptimerobot.com.

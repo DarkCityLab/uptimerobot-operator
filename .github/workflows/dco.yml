@@ -1,0 +1,36 @@
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel superseded runs of this workflow on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege token: read the repo (for the check script) and the PR commits.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    name: Check Developer Certificate of Origin
+    runs-on: ubuntu-24.04
+    steps:
+      # Check out the PR's code so the enforcement script is present (including
+      # on the PR that first introduces it). The DCO check is not a security
+      # boundary -- it only reads commit metadata -- so running the PR's own
+      # copy of the script is fine.
+      - name: Clone the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify every commit is signed off
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        # python3 is preinstalled on ubuntu runners; the script uses stdlib only.
+        run: python3 .github/scripts/check-dco.py
