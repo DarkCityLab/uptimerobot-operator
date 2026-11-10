@@ -360,6 +360,7 @@ Contributions are welcome. Before opening a PR, please read:
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, coding conventions, commit style,
   and the review flow.
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — how we work together here.
+- [SECURITY.md](SECURITY.md) — how to report a vulnerability privately.
 
 This project uses the [Developer Certificate of Origin](https://developercertificate.org).
 Sign off every commit with `git commit -s`; a CI check enforces it on each PR.
