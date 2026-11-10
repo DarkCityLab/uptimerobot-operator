@@ -12,6 +12,15 @@ monitors for services exposed in your cluster, using the UptimeRobot **v3** API.
 
 See [docs/architecture.md](docs/architecture.md) for diagrams and design details.
 
+> **Disclaimer — not affiliated with UptimeRobot.** This is an independent,
+> open-source project that I build and maintain on my own, in my spare time. It is
+> **not** affiliated with, endorsed by, sponsored by, or supported by UptimeRobot or
+> its operators — it simply talks to UptimeRobot's public v3 API on your behalf.
+> "UptimeRobot" is a trademark of its respective owner and is used here only to
+> describe interoperability (nominative use). For the official service, pricing, and
+> terms, see [uptimerobot.com](https://uptimerobot.com). Please file issues with this
+> operator here on GitHub — **not** with UptimeRobot support.
+
 ## How it works
 
 The `Monitor` CR is the single source of truth. Source watchers translate
@@ -344,6 +353,20 @@ version-bearing file, commits, tags, and pushes.
 
 
 
+## Contributing
+
+Contributions are welcome. Before opening a PR, please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, coding conventions, commit style,
+  and the review flow.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — how we work together here.
+
+This project uses the [Developer Certificate of Origin](https://developercertificate.org).
+Sign off every commit with `git commit -s`; a CI check enforces it on each PR.
+
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+"UptimeRobot" is a trademark of its respective owner. As stated in the disclaimer
+above, this project is independent and not affiliated with UptimeRobot.
