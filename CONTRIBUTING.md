@@ -15,9 +15,9 @@ By participating, you agree to abide by our
 
 - **Report a bug** or **request a feature** — open an issue using one of the
   [issue templates](https://github.com/DarkCityLab/uptimerobot-operator/issues/new/choose).
-- **Report a security issue** — please do **not** open a public issue. Use the
-  repository's **Security → Report a vulnerability** page so it stays private to
-  the maintainers.
+- **Report a security issue** — please do **not** open a public issue. Follow
+  [SECURITY.md](SECURITY.md): use the repository's **Security → Report a
+  vulnerability** page so it stays private to the maintainers.
 - **Send a pull request** — see the workflow below.
 
 ## Developer Certificate of Origin (DCO) — required
