@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.5...v0.1.6) (2026-11-16)
+
+
+### Bug Fixes
+
+* **deps:** bump distroless/static-debian13 from `25ac8f0` to `aafe993` ([4d25680](https://github.com/DarkCityLab/uptimerobot-operator/commit/4d256808b59fc8d82f4706cf4e3ba9d028968894))
+* **deps:** bump golang from `e519d3b` to `ec47ea3` ([107ff32](https://github.com/DarkCityLab/uptimerobot-operator/commit/107ff32b5e224486bdbb109e4d9f37a9ad228f16))
+
 ## [0.1.5](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.4...v0.1.5) (2026-11-09)
 
 
