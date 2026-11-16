@@ -20,11 +20,19 @@ package annotations
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	monitoringv1alpha1 "github.com/DarkCityLab/uptimerobot-operator/api/v1alpha1"
 )
+
+// successCodeRe matches an UptimeRobot success code or range: a leading 1-5
+// followed by either "xx" (a class) or two digits (a specific code), e.g. "2xx"
+// or "404".
+var successCodeRe = regexp.MustCompile(`^[1-5](xx|[0-9]{2})$`)
 
 // Annotation keys recognised on source objects (HTTPRoute, Ingress) and on the
 // Monitor itself (ResetStats).
@@ -124,6 +132,54 @@ func ParseAlertContacts(raw string) []monitoringv1alpha1.AlertContactAssignment 
 		out = append(out, monitoringv1alpha1.AlertContactAssignment{AlertContactID: id})
 	}
 	return out
+}
+
+// ValidateAnnotations checks the annotations whose bad values BuildMonitorSpec
+// would otherwise silently drop or default, returning an aggregated error that
+// names every invalid annotation (or nil when all are valid). An empty value is
+// treated as absent. Enum-valued annotations (type, http-method, auth-type,
+// http-body-type) are NOT checked here — the CRD schema rejects those on the
+// generated Monitor, which surfaces as a failed source reconcile.
+func ValidateAnnotations(ann map[string]string) error {
+	var errs []error
+
+	for _, key := range []string{Enabled, Paused, FollowRedirects, CheckSSLErrors, SSLExpiryReminder, DomainExpiryReminder} {
+		if v := strings.TrimSpace(ann[key]); v != "" {
+			if _, ok := parseBoolAnnotation(v); !ok {
+				errs = append(errs, fmt.Errorf("%s: %q is not a boolean (true/false)", key, v))
+			}
+		}
+	}
+
+	if v := strings.TrimSpace(ann[Scheme]); v != "" && !strings.EqualFold(v, "http") && !strings.EqualFold(v, "https") {
+		errs = append(errs, fmt.Errorf("%s: %q must be http or https", Scheme, v))
+	}
+
+	for _, key := range []string{Interval, Timeout} {
+		if v := strings.TrimSpace(ann[key]); v != "" {
+			if _, err := strconv.Atoi(v); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %q is not an integer (seconds)", key, v))
+			}
+		}
+	}
+
+	if v := strings.TrimSpace(ann[HTTPHeaders]); v != "" {
+		headers := map[string]string{}
+		if err := json.Unmarshal([]byte(v), &headers); err != nil {
+			errs = append(errs, fmt.Errorf("%s: not a valid JSON object of string values (%v)", HTTPHeaders, err))
+		}
+	}
+
+	if v := strings.TrimSpace(ann[SuccessCodes]); v != "" {
+		for part := range strings.SplitSeq(v, ",") {
+			c := strings.TrimSpace(part)
+			if c != "" && !successCodeRe.MatchString(c) {
+				errs = append(errs, fmt.Errorf("%s: %q is not a status code or range (e.g. 2xx, 200)", SuccessCodes, c))
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // BuildMonitorSpec produces a Monitor spec from a derived url and the source

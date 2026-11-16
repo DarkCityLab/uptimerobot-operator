@@ -19,7 +19,9 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,6 +36,7 @@ import (
 type HTTPRouteReconciler struct {
 	client.Client
 	Scheme               *runtime.Scheme
+	Recorder             record.EventRecorder
 	DefaultAlertContacts []monitoringv1alpha1.AlertContactAssignment
 
 	resolver resolver.HTTPRoute
@@ -56,6 +59,15 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	var targets []hostTarget
 	if enabled {
+		// Surface invalid annotations instead of silently dropping them.
+		if err := annotations.ValidateAnnotations(route.Annotations); err != nil {
+			log.Info("Rejected invalid monitor annotations", "route", req.NamespacedName, "error", err.Error())
+			if r.Recorder != nil {
+				r.Recorder.Event(&route, corev1.EventTypeWarning, "InvalidAnnotation", err.Error())
+			}
+			// User error: do not requeue; a corrected annotation re-triggers.
+			return ctrl.Result{}, nil
+		}
 		hosts, err := r.resolver.Hosts(&route)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -77,6 +89,9 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager wires the controller, watching owned Monitors for cleanup.
 func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.Recorder == nil {
+		r.Recorder = mgr.GetEventRecorderFor("httproute-controller") //nolint:staticcheck
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.HTTPRoute{}).
 		Owns(&monitoringv1alpha1.Monitor{}).

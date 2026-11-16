@@ -19,8 +19,10 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,6 +36,7 @@ import (
 type IngressReconciler struct {
 	client.Client
 	Scheme               *runtime.Scheme
+	Recorder             record.EventRecorder
 	DefaultAlertContacts []monitoringv1alpha1.AlertContactAssignment
 
 	resolver resolver.Ingress
@@ -55,6 +58,15 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	var targets []hostTarget
 	if enabled {
+		// Surface invalid annotations instead of silently dropping them.
+		if err := annotations.ValidateAnnotations(ing.Annotations); err != nil {
+			log.Info("Rejected invalid monitor annotations", "ingress", req.NamespacedName, "error", err.Error())
+			if r.Recorder != nil {
+				r.Recorder.Event(&ing, corev1.EventTypeWarning, "InvalidAnnotation", err.Error())
+			}
+			// User error: do not requeue; a corrected annotation re-triggers.
+			return ctrl.Result{}, nil
+		}
 		hosts, err := r.resolver.Hosts(&ing)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -81,6 +93,9 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 // SetupWithManager wires the controller, watching owned Monitors for cleanup.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.Recorder == nil {
+		r.Recorder = mgr.GetEventRecorderFor("ingress-controller") //nolint:staticcheck
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Owns(&monitoringv1alpha1.Monitor{}).

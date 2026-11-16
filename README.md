@@ -121,6 +121,14 @@ To tune the operator, add flags to `manager.args`, e.g.
 | `monitoring.homelab.io/ssl-expiry-reminder` | `"true"`/`"false"` |
 | `monitoring.homelab.io/domain-expiry-reminder` | `"true"`/`"false"` |
 
+> **Validation:** once `monitoring.homelab.io/enabled` is present, the operator validates the
+> annotation values. A malformed value (non-numeric `interval`/`timeout`, an unparseable
+> boolean, invalid `http-headers` JSON, a bad `scheme`, or a malformed `success-codes` entry)
+> is **not** silently dropped — the operator emits a `Warning`/`InvalidAnnotation` event on the
+> HTTPRoute/Ingress and creates no monitor until you fix it. Check with
+> `kubectl describe httproute <name>` (or `ingress`). Enum values (`type`, `http-method`,
+> `auth-type`, `http-body-type`) are additionally enforced by the CRD schema.
+
 #### Authenticated endpoints (annotation or CR)
 
 When the monitored endpoint needs auth, set `auth-type` and point `auth-secret` at a k8s Secret

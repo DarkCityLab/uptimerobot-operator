@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"strings"
 	"testing"
 
 	monitoringv1alpha1 "github.com/DarkCityLab/uptimerobot-operator/api/v1alpha1"
@@ -158,4 +159,59 @@ func TestBuildMonitorSpec(t *testing.T) {
 			t.Errorf("expected nil HTTP, got %+v", spec.HTTP)
 		}
 	})
+}
+
+func TestValidateAnnotations(t *testing.T) {
+	// A fully valid set must pass.
+	valid := map[string]string{
+		Enabled: "true", Paused: "false", Scheme: "https",
+		Interval: "300", Timeout: "30",
+		HTTPHeaders: `{"X-Env":"prod"}`, SuccessCodes: "2xx,3xx,404",
+		FollowRedirects: "true", CheckSSLErrors: "true",
+		SSLExpiryReminder: "false", DomainExpiryReminder: "true",
+	}
+	if err := ValidateAnnotations(valid); err != nil {
+		t.Fatalf("valid annotations rejected: %v", err)
+	}
+
+	// Each invalid value must be reported, naming its key.
+	bad := []struct{ key, val string }{
+		{Enabled, "ture"},
+		{Paused, "nope"},
+		{Scheme, "ftp"},
+		{Interval, "abc"},
+		{Timeout, "5s"},
+		{HTTPHeaders, "{not json"},
+		{SuccessCodes, "9xx"},
+		{SuccessCodes, "abc"},
+		{FollowRedirects, "maybe"},
+		{CheckSSLErrors, "1.5"},
+	}
+	for _, tc := range bad {
+		t.Run(tc.key+"="+tc.val, func(t *testing.T) {
+			err := ValidateAnnotations(map[string]string{tc.key: tc.val})
+			if err == nil {
+				t.Fatalf("expected error for %s=%q", tc.key, tc.val)
+			}
+			if !strings.Contains(err.Error(), tc.key) {
+				t.Errorf("error %q should name key %q", err.Error(), tc.key)
+			}
+		})
+	}
+
+	// Empty values are treated as absent (lenient), not errors.
+	if err := ValidateAnnotations(map[string]string{Interval: "", Paused: "  ", Scheme: ""}); err != nil {
+		t.Errorf("empty values should be ignored, got %v", err)
+	}
+
+	// Multiple failures are aggregated into one error.
+	multi := ValidateAnnotations(map[string]string{Interval: "x", Scheme: "ftp", Timeout: "y"})
+	if multi == nil {
+		t.Fatal("expected aggregated error")
+	}
+	for _, want := range []string{Interval, Scheme, Timeout} {
+		if !strings.Contains(multi.Error(), want) {
+			t.Errorf("aggregated error %q missing %q", multi.Error(), want)
+		}
+	}
 }
