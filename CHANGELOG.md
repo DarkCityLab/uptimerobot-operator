@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.6...v0.2.0) (2026-11-16)
+
+
+### Features
+
+* validate monitor annotations and surface errors as events ([8b7a065](https://github.com/DarkCityLab/uptimerobot-operator/commit/8b7a065be6305702c20edbcf86149b2f39d5e69c))
+
 ## [0.1.6](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.5...v0.1.6) (2026-11-16)
 
 

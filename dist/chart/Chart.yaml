@@ -2,8 +2,8 @@ apiVersion: v2
 name: uptimerobot-operator
 description: A Helm chart to distribute uptimerobot-operator
 type: application
-version: 0.1.6
-appVersion: 0.1.6
+version: 0.2.0
+appVersion: 0.2.0
 keywords:
   - kubernetes
   - operator
