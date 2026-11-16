@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,5 +67,33 @@ func TestHTTPRouteRejectsInvalidAnnotations(t *testing.T) {
 		}
 	default:
 		t.Error("expected an InvalidAnnotation Warning event, got none")
+	}
+}
+
+// A source being deleted must NOT run annotation validation: deletion proceeds
+// (and owned Monitors are cleaned up) even if the annotations are now invalid.
+func TestHTTPRouteDeletionSkipsValidation(t *testing.T) {
+	scheme := newScheme(t)
+	route := newRoute()
+	route.Annotations[annotations.Interval] = "abc" // invalid — but we're deleting
+	now := metav1.Now()
+	route.DeletionTimestamp = &now
+	route.Finalizers = []string{"test/hold"} // fake client retains a deleting object only with a finalizer
+
+	cl := ctrlfake.NewClientBuilder().WithScheme(scheme).WithObjects(route).Build()
+	rec := record.NewFakeRecorder(10)
+	r := &HTTPRouteReconciler{Client: cl, Scheme: scheme, Recorder: rec}
+
+	if _, err := r.Reconcile(context.Background(), ctrl.Request{
+		NamespacedName: types.NamespacedName{Name: route.Name, Namespace: route.Namespace},
+	}); err != nil {
+		t.Fatalf("Reconcile on a deleting route returned error: %v", err)
+	}
+
+	select {
+	case ev := <-rec.Events:
+		t.Errorf("deletion must skip annotation validation, but got event: %q", ev)
+	default:
+		// expected: no InvalidAnnotation event on the delete path
 	}
 }
