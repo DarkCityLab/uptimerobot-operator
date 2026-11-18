@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   lint:
-    name: Run on Ubuntu
+    name: Lint
     runs-on: ubuntu-24.04
     steps:
       - name: Clone the code
