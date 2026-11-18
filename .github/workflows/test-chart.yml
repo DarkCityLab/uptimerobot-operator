@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   test-e2e:
-    name: Run on Ubuntu
+    name: Test Chart
     runs-on: ubuntu-24.04
     steps:
       - name: Clone the code
@@ -50,7 +50,7 @@ jobs:
 
       - name: Lint Helm Chart
         run: |
-          helm lint ./dist/chart
+          helm lint --strict ./dist/chart
 
 # TODO: Uncomment if cert-manager is enabled
 #      - name: Install cert-manager via Helm (wait for readiness)
