@@ -351,16 +351,6 @@ Automated with [release-please](https://github.com/googleapis/release-please-act
    **cosign-signs**, and publishes the multi-arch image + Helm chart (chart and image
    versions always match).
 
-**One-time setup:** release-please needs its own token to trigger `release.yml` (GitHub
-won't fire workflows from a `GITHUB_TOKEN`-created tag). Add a fine-grained PAT — this repo
-only, **Contents** + **Pull requests: Read and write** — as the Actions secret
-**`RELEASE_PLEASE_TOKEN`**. Without it the release PR still works, but you push the tag yourself.
-
-**Manual release** (bypass release-please): `hack/release.sh X.Y.Z --push` bumps every
-version-bearing file, commits, tags, and pushes.
-
-
-
 ## Contributing
 
 Contributions are welcome. Before opening a PR, please read:
