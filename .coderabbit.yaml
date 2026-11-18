@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en-US
+
+reviews:
+  auto_approvals:
+    enabled: true
+    approve_on_skipped_review: false
+    allow_author_approval: false
+  profile: assertive
+  high_level_summary: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: true
+    auto_incremental_review: true
+    base_branches:
+      - ".*"
+
+  path_instructions:
+    - path: ".github/workflows/**"
+      instructions: |
+        Check whether each workflow runs on the intended event and whether
+        required PR checks report a result for every relevant change.
+        Flag failures hidden by continue-on-error, especially SARIF uploads.
+        For release changes, trace the flow from release PR to tag creation,
+        image and chart publication, and Cosign signing. Check token permissions
+        and whether third-party actions are pinned to full commit SHAs.
+
+    - path: "**/*.go"
+      instructions: |
+        For reconciler changes, check what happens when the same Kubernetes
+        object is reconciled twice or a UptimeRobot API request times out
+        after the server has processed it. Flag paths that could create
+        duplicate monitors, lose track of an existing monitor, or remove a
+        finalizer before cleanup succeeds.
+
+    - path: "dist/chart/**"
+      instructions: |
+        Check Helm install and upgrade behavior, RBAC permissions, and whether
+        the rendered Deployment references the intended operator image and tag.
+        Point out changes that break existing values files.
+
+    - path: "Dockerfile"
+      instructions: |
+        Check that the Go binary is built for the target OS and architecture.
+        The release workflow publishes linux/amd64 and linux/arm64 images.
+        Flag hardcoded GOARCH values or build steps that could put an amd64
+        binary in the arm64 image.
+
+        Verify that the final stage copies the operator binary to the path
+        used by ENTRYPOINT and that the configured non-root user can execute it.
+        Check that CA certificates are available for HTTPS requests to the
+        UptimeRobot API.
+
+        Flag credentials copied into image layers and build tools or source
+        files unnecessarily included in the runtime image.
