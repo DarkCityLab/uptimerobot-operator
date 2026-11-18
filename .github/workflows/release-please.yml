@@ -3,23 +3,18 @@ name: release-please
 on:
   push:
     branches: [main]
-  workflow_dispatch: {} # allow manual regeneration of the release PR
+  workflow_dispatch: {}
 
-permissions:
-  contents: write
-  pull-requests: write
+# Release Please and the GitHub CLI both use the release app token.
+permissions: {}
 
-# Only one release-please run at a time on main.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
-
-
 jobs:
   release-please:
     runs-on: ubuntu-24.04
-    permissions: {}
 
     steps:
       - name: Generate release app token
@@ -38,10 +33,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Enable auto-merge on the release PR
-        if: ${{ steps.release.outputs.pr }}
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
           GH_REPO: ${{ github.repository }}
-        run: gh pr merge "$PR_NUMBER" --repo "$GH_REPO" --auto --squash
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        shell: bash
+        run: |
+          pr_number=$(jq -er '.number | select(type == "number")' <<< "$RELEASE_PR")
+          gh pr merge "$pr_number" --repo "$GH_REPO" --auto --squash
