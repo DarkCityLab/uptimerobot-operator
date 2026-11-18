@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.2.0...v0.3.0) (2026-11-18)
+
+
+### Features
+
+* **release:** automate releases with a GitHub App ([2d24329](https://github.com/DarkCityLab/uptimerobot-operator/commit/2d24329da811671e1d96f99d77085a81206faa6f))
+
 ## [0.2.0](https://github.com/DarkCityLab/uptimerobot-operator/compare/v0.1.6...v0.2.0) (2026-11-16)
 
 
